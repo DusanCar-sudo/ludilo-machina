@@ -16,7 +16,11 @@ def run(user_msg, history=None, cfg=None, chat=llm.chat, max_steps=30, say=print
     history = history or [{"role": "system", "content": SYSTEM.format(profile=json.dumps(env.probe()))}]
     history.append({"role": "user", "content": user_msg})
     for _ in range(max_steps):
-        m = chat(history, tools.SCHEMAS, cfg) if cfg else chat(history, tools.SCHEMAS)
+        try:
+            m = chat(history, tools.SCHEMAS, cfg) if cfg else chat(history, tools.SCHEMAS)
+        except RuntimeError as e:
+            say(f"[model error: {e}] - your chat is kept, just say 'continue'")
+            return history
         history.append({k: v for k, v in m.items() if v is not None})
         if m.get("content"):
             say(m["content"])

@@ -1,5 +1,5 @@
 """OpenAI-compatible chat client (stdlib only). User supplies base URL / model / key."""
-import json, os, urllib.request
+import http.client, json, os, time, urllib.error, urllib.request
 
 CONF = os.path.expanduser("~/.ludilo/config.json")
 
@@ -35,8 +35,21 @@ def chat(messages, tools, cfg=None):
                                  json.dumps(body).encode(),
                                  {"Content-Type": "application/json",
                                   "Authorization": f"Bearer {cfg['api_key']}"})
-    with urllib.request.urlopen(req, timeout=300) as r:
-        data = json.load(r)
+    data, err = None, None
+    for wait in (0, 2, 5, 10):  # flaky mobile links / proxies: retry, don't die
+        time.sleep(wait)
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r:
+                data = json.loads(r.read())
+            break
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 500, 502, 503, 504):
+                raise RuntimeError(f"HTTP {e.code}: {e.read()[:300].decode('utf8', 'replace')}")
+            err = e
+        except (OSError, http.client.HTTPException, ValueError) as e:
+            err = e
+    if data is None:
+        raise RuntimeError(f"model request failed after retries: {err!r}")
     record_usage(cfg["model"], data.get("usage") or {})
     return data["choices"][0]["message"]
 

@@ -30,3 +30,34 @@ def test_allow_all_by_default_then_user_limits():
     limits.edit("allow", "run_shell"); limits.edit("deny_shell", "rm -rf")
     assert tools.call("run_shell", {"command": "rm -rf /x"}).startswith("BLOCKED")
     assert tools.call("run_shell", {"command": "echo ok"}) == "ok"
+
+
+def test_chat_retries_truncated_response_then_gives_up_cleanly():
+    import http.client, io, urllib.request
+    from ludilo import llm
+    calls = []
+
+    class R(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+
+    def fake(req, timeout=0):
+        calls.append(1)
+        if len(calls) < 3:
+            raise http.client.IncompleteRead(b"")
+        return R(b'{"choices":[{"message":{"content":"hi"}}]}')
+    real, sleep = urllib.request.urlopen, llm.time.sleep
+    urllib.request.urlopen, llm.time.sleep = fake, lambda s: None
+    llm.record_usage = lambda *a: None
+    try:
+        assert llm.chat([], None, {"base_url": "http://x", "model": "m", "api_key": "k"})["content"] == "hi"
+        assert len(calls) == 3
+        calls.clear()
+        urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(http.client.IncompleteRead(b""))
+        try:
+            llm.chat([], None, {"base_url": "http://x", "model": "m", "api_key": "k"})
+            assert False
+        except RuntimeError as e:
+            assert "after retries" in str(e)
+    finally:
+        urllib.request.urlopen, llm.time.sleep = real, sleep
