@@ -23,6 +23,7 @@ files/shell, `probe_env`, `new_android_project`, `build_apk`, `install_apk`, `la
     ludilo limits deny_shell "rm -rf"      # block shell commands containing this
     ludilo limits allow device_settings    # remove a limit
 
+Chats are saved automatically: `ludilo continue` resumes the latest, `ludilo resume` shows a list (or `ludilo resume 2`).
 `ludilo status` shows model, key, toolchain, limits and token totals (today / all time; session total prints on exit).
 Every action is logged to `~/.ludilo/actions.log`.
 

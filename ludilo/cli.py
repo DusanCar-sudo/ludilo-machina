@@ -1,5 +1,5 @@
 import sys
-import json
+import glob, json, os, time
 from . import agent, llm, env, limits, splash
 
 
@@ -11,6 +11,35 @@ def setup_llm():
             cfg[k] = v
     llm.save_config(cfg)
     print("saved to ~/.ludilo/config.json (0600)")
+
+
+SESS = os.path.expanduser("~/.ludilo/sessions")
+
+
+def _sessions():
+    return sorted(glob.glob(f"{SESS}/*.json"), reverse=True)
+
+
+def _save(path, hist):
+    os.makedirs(SESS, exist_ok=True)
+    json.dump(hist, open(path, "w"))
+
+
+def _pick(arg):
+    """'continue' -> newest; 'resume' -> numbered menu; 'resume N' -> Nth."""
+    ss = _sessions()
+    if not ss:
+        print("no saved sessions yet"); return None
+    if arg == "continue":
+        return ss[0]
+    if arg and arg.isdigit() and 0 < int(arg) <= len(ss):
+        return ss[int(arg) - 1]
+    for i, f in enumerate(ss[:15], 1):
+        h = json.load(open(f))
+        first = next((m["content"] for m in h if m["role"] == "user"), "")[:70].replace("\n", " ")
+        print(f"{i:>2}. {os.path.basename(f)[:-5]}  {first}")
+    n = input("resume which? ").strip()
+    return ss[int(n) - 1] if n.isdigit() and 0 < int(n) <= len(ss) else None
 
 
 def status():
@@ -43,7 +72,13 @@ def main():
         print("No model configured. Run: ludilo config")
         return 1
     splash.show(model=llm.load_config()["model"])
-    hist = None
+    hist, path = None, f"{SESS}/{time.strftime('%Y%m%d-%H%M%S')}.json"
+    if a[:1] in (["continue"], ["resume"]):
+        f = _pick(a[0] if a[0] == "continue" else (a[1] if len(a) > 1 else ""))
+        if f:
+            hist, path = json.load(open(f)), f
+            print(f"resumed {os.path.basename(f)} ({len(hist)} messages)")
+        a = []
     first = " ".join(a)
     while True:
         try:
@@ -55,6 +90,7 @@ def main():
         first = ""
         if msg.strip():
             hist = agent.run(msg, hist)
+            _save(path, hist)
 
 
 if __name__ == "__main__":
