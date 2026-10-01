@@ -50,7 +50,10 @@ def install_apk(apk_path):
     """Silent install via self-ADB if connected, else open the system installer."""
     apk_path = _p(apk_path)
     if "device" in sh("adb devices | tail -n +2"):
-        return sh(f"adb install -r {shlex.quote(apk_path)}")
+        out = sh(f"adb install -r {shlex.quote(apk_path)}")
+        if "USER_RESTRICTED" in out:
+            out += "\nHINT: on Xiaomi/MIUI enable Developer options > 'Install via USB' (and 'USB debugging (Security settings)')."
+        return out
     return sh(f"termux-open --view {shlex.quote(apk_path)}") + " (system installer opened; user taps Install)"
 
 

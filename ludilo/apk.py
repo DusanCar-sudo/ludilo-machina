@@ -22,6 +22,23 @@ def _need(tool):
     return tool
 
 
+def zipalign(src, dst, align=4):
+    """Pure-Python zipalign (Termux has no zipalign package): pad stored entries to `align` bytes."""
+    with zipfile.ZipFile(src) as zi, open(dst, "wb") as out:
+        zo = zipfile.ZipFile(out, "w")
+        for info in zi.infolist():
+            data = zi.read(info.filename)
+            ni = zipfile.ZipInfo(info.filename, info.date_time)
+            ni.compress_type, ni.external_attr = info.compress_type, info.external_attr
+            if info.compress_type == zipfile.ZIP_STORED:
+                off = out.tell() + 30 + len(info.filename.encode())
+                pad = (-off) % align
+                if pad:
+                    ni.extra = b"\x00" * pad
+            zo.writestr(ni, data)
+        zo.close()
+
+
 def ensure_keystore():
     ks = f"{HOME}/debug.keystore"
     if not os.path.exists(ks):
@@ -50,17 +67,20 @@ def build(project, out=None):
     _sh([_need("aapt2"), "link", "-o", base, "-I", jar, "--manifest", f"{project}/AndroidManifest.xml",
          "--java", f"{b}/gen", "--auto-add-overlay", *flats])
     srcs = glob.glob(f"{project}/src/**/*.java", recursive=True) + glob.glob(f"{b}/gen/**/*.java", recursive=True)
-    if shutil.which("ecj"):
-        _sh(["ecj", "-d", f"{b}/classes", "-cp", jar, "-source", "1.8", "-target", "1.8", *srcs])
+    if shutil.which("javac"):
+        _sh(["javac", "-nowarn", "--release", "8", "-d", f"{b}/classes", "-cp", jar, *srcs])
     else:
-        _sh([_need("javac"), "-d", f"{b}/classes", "-cp", jar, "--release", "8", *srcs])
+        _sh([_need("ecj"), "-nowarn", "-d", f"{b}/classes", "-cp", jar, *srcs])
     classes = glob.glob(f"{b}/classes/**/*.class", recursive=True)
     _sh([_need("d8"), "--lib", jar, "--output", b, *classes])
     with zipfile.ZipFile(base, "a") as z:
         z.write(f"{b}/classes.dex", "classes.dex")
     name = os.path.basename(project)
     aligned = f"{b}/aligned.apk"
-    _sh([_need("zipalign"), "-f", "-p", "4", base, aligned])
+    if shutil.which("zipalign"):
+        _sh(["zipalign", "-f", "-p", "4", base, aligned])
+    else:
+        zipalign(base, aligned)
     final = out or f"{project}/{name}.apk"
     _sh([_need("apksigner"), "sign", "--ks", ensure_keystore(), "--ks-pass", "pass:ludilo123",
          "--out", final, aligned])
