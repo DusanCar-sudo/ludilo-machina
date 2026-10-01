@@ -1,13 +1,20 @@
 # ludilo-machina
 
-A mobile coding agent that lives in Termux on Android and is fully aware of its environment
-(Termux prefix, Android permissions, storage, battery/network, device limits).
+A coding agent that runs **inside Termux on Android**. It writes Android apps, packs them into signed
+APKs **on the phone**, installs them, launches them, looks at the screen/logs, and fixes what broke.
 
-Goal: describe an app on your phone, get a signed, installable APK built on the same phone.
+## Status (v0.1, honest)
+- Done and tested on a desktop: agent loop, tool dispatch, confirmation gate, action log, project template.
+- Written but **not yet run on a phone**: APK pipeline (`ludilo/apk.py`), device tools (adb/Termux:API), `scripts/setup.sh`.
 
-## Pillars
-1. **Environment-aware agent**: detects Termux vs. other, arch, free RAM/storage, installed toolchain, granted permissions; adapts plans accordingly.
-2. **On-device APK pipeline**: `aapt2` -> compile (ecj/kotlinc) -> `d8` -> `zipalign` -> `apksigner` -> install via `termux-open`.
-3. **Provider-agnostic LLM backend**: user supplies base URL / model / key.
+## Run (in Termux)
+    sh scripts/setup.sh
+    python -m ludilo config      # base URL / model / key (any OpenAI-compatible API)
+    python -m ludilo "make a flashlight app and install it"
 
-See docs/APK-ON-DEVICE.md.
+## Tools the agent has
+files/shell, `probe_env`, `new_android_project`, `build_apk`, `install_apk`, `launch_app`,
+`screenshot`, `ui_dump`, `logcat`, `device_input`, `device_settings`, `termux_api`.
+Risky ones ask for confirmation; every action is logged to `~/.ludilo/actions.log`.
+
+See docs/ARCHITECTURE.md and docs/APK-ON-DEVICE.md.
