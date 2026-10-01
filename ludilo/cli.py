@@ -13,12 +13,26 @@ def setup_llm():
     print("saved to ~/.ludilo/config.json (0600)")
 
 
+def status():
+    cfg, t = llm.load_config(), llm.usage_totals()
+    tools = env.probe()["tools"]
+    print(f"model     {cfg['model'] or '(not set)'}\nendpoint  {cfg['base_url']}\napi key   {'set' if cfg['api_key'] else 'MISSING'}")
+    print("toolchain " + " ".join(f"{k}{'✓' if v else '✗'}" for k, v in tools.items() if k in ("aapt2", "d8", "apksigner", "javac")))
+    lim = {k: v for k, v in limits.get().items() if v}
+    print("limits    " + (json.dumps(lim) if lim else "none") + "  (allow-all by default)")
+    for k in ("today", "all"):
+        n, p, c = t[k]
+        print(f"tokens {k:5} {p + c:>10,}  (in {p:,} / out {c:,}, {n} calls)")
+
+
 def main():
     a = sys.argv[1:]
     if a[:1] == ["env"]:
         return env.main() if hasattr(env, "main") else print(__import__("json").dumps(env.probe(), indent=1))
     if a[:1] == ["config"]:
         return setup_llm()
+    if a[:1] in (["status"], ["usage"]):
+        return status()
     if a[:1] == ["limits"]:
         if len(a) == 1:
             return print(json.dumps(limits.get(), indent=1))
@@ -35,6 +49,8 @@ def main():
         try:
             msg = first or input("\nludilo> ")
         except EOFError:
+            S = llm.SESSION
+            print(f"\nsession: {S['prompt'] + S['completion']:,} tokens ({S['calls']} calls)")
             return 0
         first = ""
         if msg.strip():
