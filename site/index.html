@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en" data-sanity="ludilo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ludilo-machina — the coding agent that builds Android apps on the phone</title>
+<meta name="description" content="ludilo-machina v0.1.0: a coding agent that lives inside Termux on your Android phone. It writes the app, compiles a signed APK on the device with no Gradle and no PC, installs it, launches it, and fixes what broke.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<link rel="canonical" href="https://dusancar-sudo.github.io/ludilo-machina/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ludilo-machina — LUDILO is the machina">
+<meta property="og:description" content="A coding agent inside Termux. Writes Android apps, signs the APK on the device, installs, launches, reads the screen and the logs, fixes what broke.">
+<meta property="og:url" content="https://dusancar-sudo.github.io/ludilo-machina/">
+<meta property="og:image" content="https://dusancar-sudo.github.io/ludilo-machina/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://dusancar-sudo.github.io/ludilo-machina/og.jpg">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/saira-stencil-one-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/archivo-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* ---------- fonts ---------- */
+@font-face{
+  font-family:"Saira Stencil One";font-style:normal;font-weight:400;font-display:swap;
+  src:url("fonts/saira-stencil-one-latin-400-normal.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2192,U+00B7;
+}
+@font-face{
+  font-family:"Archivo";font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("fonts/archivo-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range:U+0000-00FF,U+0131,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+00B7;
+}
+@font-face{
+  font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;font-display:swap;
+  src:url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range:U+0000-00FF,U+0131,U+2013-2014,U+2018-201A,U+201C-201E,U+2022,U+2192,U+2190,U+00B7;
+}
+/* ---------- tokens ---------- */
+:root{
+  --lime:#AAFF00;
+  --ink:#E9EFE6;          /* cold off-white */
+  --dim:#8A948A;
+  --line:#22271F;
+  --black:#000000;
+  --panel:#070904;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --disp:"Saira Stencil One","Archivo",sans-serif;
+  --body:"Archivo",system-ui,sans-serif;
+  --skew:-5deg;
+  --track:.01em;
+  --radius:0px;
+  --bw:2px;
+  --maxw:1180px;
+}
+html[data-sanity="sane"]{
+  --lime:#9aa39a;          /* lime demoted to grey-green accent */
+  --ink:#C9CFC8;
+  --dim:#767d76;
+  --line:#2b2e2b;
+  --panel:#101210;
+  --disp:"Archivo",sans-serif;
+  --skew:0deg;
+  --track:-.01em;
+  --radius:10px;
+  --bw:1px;
+}
+/* ---------- base ---------- */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{
+  background:var(--black);color:var(--ink);
+  font:400 1rem/1.6 var(--body);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+::selection{background:var(--lime);color:#000}
+a{color:inherit}
+img{max-width:100%;display:block}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+
+/* ---------- ruler motif ---------- */
+.ruler{display:flex;gap:0;height:14px;align-items:flex-end;
+  background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 12px)}
+.ruler i{display:block;width:1px;height:100%;background:var(--line)}
+.ruler::after{content:"";flex:1}
+.rule{height:2px;background:var(--lime);border:0;margin:0}
+html[data-sanity="sane"] .rule{background:var(--line)}
+
+/* ---------- header + lever ---------- */
+header{
+  position:sticky;top:0;z-index:50;background:rgba(0,0,0,.94);
+  border-bottom:1px solid var(--line);
+}
+header .bar{display:flex;align-items:center;gap:16px;padding:12px 0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:30px;height:30px}
+.brand b{font:400 1.05rem/1 var(--disp);letter-spacing:.06em;transform:skewX(var(--skew));display:inline-block;color:var(--lime)}
+html[data-sanity="sane"] .brand b{transform:none}
+.brand small{font:400 .7rem/1.3 var(--mono);color:var(--dim);border-left:1px solid var(--line);padding-left:10px}
+.lever{margin-left:auto}
+/* three tiers: sane (grey, straight) · odd (default: stencil, slight skew) · ludilo (full madness) */
+html[data-sanity="ludilo"]{
+  --skew:-7deg;
+  --track:.05em;
+  --bw:3px;
+}
+html[data-sanity="ludilo"] .spec{background:#0A0F02}
+html[data-sanity="ludilo"] .term{background:#0A0F02}
+.lever{display:flex;align-items:center;gap:10px}
+.lever label{font:400 .65rem/1 var(--mono);letter-spacing:.22em;color:var(--dim)}
+.lever input{
+  -webkit-appearance:none;appearance:none;width:clamp(120px,22vw,220px);height:34px;background:transparent;cursor:pointer;
+}
+.lever input::-webkit-slider-runnable-track{height:6px;background:var(--line)}
+.lever input::-moz-range-track{height:6px;background:var(--line)}
+.lever input::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:30px;margin-top:-12px;background:var(--lime);border:0;border-radius:2px;
+}
+.lever input::-moz-range-thumb{width:16px;height:30px;background:var(--lime);border:0;border-radius:2px}
+.lever output{font:400 .68rem/1.2 var(--mono);color:var(--lime);min-width:74px}
+.lever .ends{display:flex;flex-direction:column;font:400 .55rem/1.5 var(--mono);color:var(--dim);letter-spacing:.1em}
+nav.links{display:none;gap:22px;font:400 .8rem/1 var(--mono)}
+nav.links a{text-decoration:none;color:var(--dim);display:inline-block;padding:8px 0}
+nav.links a:hover{color:var(--lime)}
+.brand small{display:none}
+.lever output{min-width:0}
+.lever label{display:none}
+@media(min-width:560px){
+  .brand small{display:block}
+  .lever label{display:block}
+  .lever output{min-width:74px}
+}
+@media(min-width:820px){nav.links{display:flex}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:clamp(48px,9vw,110px) 0 0}
+.kick{font:400 .72rem/1.6 var(--mono);letter-spacing:.14em;color:var(--dim);margin-bottom:22px}
+.kick b{color:var(--lime);font-weight:400}
+h1{
+  font:400 clamp(2.9rem,10.5vw,7.2rem)/0.94 var(--disp);
+  text-transform:uppercase;letter-spacing:var(--track);
+  transform:skewX(var(--skew));transform-origin:left bottom;
+  transition:transform .25s ease;
+  margin:0 0 .18em -.04em;color:var(--ink);
+}
+h1 .l{color:var(--lime)}
+html[data-sanity="sane"] h1{text-transform:none;font-weight:800;letter-spacing:-.02em}
+.hero .deck{
+  max-width:56ch;font-size:clamp(1rem,1.6vw,1.18rem);line-height:1.65;color:var(--ink);
+  border-left:var(--bw) solid var(--lime);padding-left:18px;margin:28px 0 30px;
+}
+.hero .deck .m{color:var(--dim)}
+.cta{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.btn{
+  display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:12px 22px;
+  font:400 .82rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;
+  border:var(--bw) solid var(--lime);color:#000;background:var(--lime);border-radius:var(--radius);
+  transition:transform .15s ease;
+}
+.btn.ghost{background:transparent;color:var(--lime)}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--lime)}
+html[data-sanity="sane"] .btn{background:var(--line);border-color:var(--line);color:var(--ink)}
+html[data-sanity="sane"] .btn.ghost{background:transparent}
+html[data-sanity="sane"] .btn:hover{box-shadow:2px 2px 0 #000}
+.verified{font:400 .7rem/1.7 var(--mono);color:var(--dim);margin-top:16px}
+.hero{display:grid;grid-template-columns:1fr}
+@media(min-width:1000px){
+  .hero{grid-template-columns:minmax(0,1.25fr) minmax(0,.75fr);gap:clamp(30px,5vw,70px);align-items:start}
+  .heroSide{margin-top:clamp(90px,10vw,140px)}
+}
+.heroSide figure{margin:0;border:var(--bw) solid var(--lime);border-radius:var(--radius);background:var(--panel);padding:10px}
+.heroSide img{width:100%}
+.heroSide figcaption{font:400 .66rem/1.7 var(--mono);color:var(--dim);padding:10px 4px 2px}
+.heroSide figcaption b{color:var(--lime);font-weight:400}
+/* hero spec sheet */
+.spec{
+  grid-column:1/-1;
+  margin-top:clamp(40px,7vw,80px);border:var(--bw) solid var(--lime);border-radius:var(--radius);
+  display:grid;grid-template-columns:1fr;background:var(--panel);
+}
+.spec > div{padding:16px 18px;border-top:1px solid var(--line)}
+.spec > div:first-child{border-top:0}
+.spec dt{font:400 .62rem/1 var(--mono);letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:6px}
+.spec dd{font:400 .95rem/1.5 var(--mono);color:var(--ink)}
+.spec dd em{font-style:normal;color:var(--lime)}
+@media(min-width:760px){
+  .spec{grid-template-columns:repeat(4,1fr)}
+  .spec > div{border-top:0;border-left:1px solid var(--line)}
+  .spec > div:first-child{border-left:0}
+}
+
+/* ---------- sections ---------- */
+section{padding:clamp(56px,9vw,110px) 0 0}
+.shead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.shead .idx{font:400 .7rem/1 var(--mono);color:var(--dim);letter-spacing:.2em}
+h2{
+  font:400 clamp(1.7rem,4.6vw,3.1rem)/1.02 var(--disp);text-transform:uppercase;
+  transform:skewX(var(--skew));transform-origin:left bottom;transition:transform .25s ease;color:var(--ink);
+}
+html[data-sanity="sane"] h2{text-transform:none;font-weight:800;letter-spacing:-.02em}
+.sub{font:400 .95rem/1.7 var(--body);color:var(--dim);max-width:62ch;margin:14px 0 34px}
+.sub code,p code,li code{font:400 .88em var(--mono);color:var(--lime)}
+
+/* console block */
+.term{
+  background:var(--panel);border:var(--bw) solid var(--lime);border-radius:var(--radius);
+  padding:20px clamp(14px,3vw,26px);font:400 clamp(.78rem,1.5vw,.92rem)/1.85 var(--mono);
+  overflow-x:auto;white-space:pre;
+}
+.term .p{color:var(--lime)}
+.term .c{color:var(--dim)}
+.term .t{color:var(--ink)}
+.cap{font:400 .72rem/1.8 var(--mono);color:var(--dim);margin-top:12px;max-width:70ch}
+
+/* loop steps */
+.loop{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-top:36px}
+.loop li{list-style:none;background:var(--black);padding:14px 16px;display:flex;gap:14px;align-items:baseline}
+.loop .n{font:400 .68rem/1 var(--mono);color:#000;background:var(--lime);min-width:34px;text-align:center;padding:4px 0;flex:none}
+.loop .name{font:400 .88rem/1.4 var(--mono);color:var(--ink)}
+.loop .why{color:var(--dim);font:400 .8rem/1.5 var(--mono)}
+@media(min-width:700px){.loop{grid-template-columns:1fr 1fr}.loop li{border-top:1px solid var(--line)}}
+@media(min-width:1000px){.loop{grid-template-columns:repeat(3,1fr)}}
+
+/* pipeline band */
+.pipe{counter-reset:p;display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:var(--bw) solid var(--lime);border-radius:var(--radius);overflow:hidden}
+.pipe li{list-style:none;background:var(--panel);padding:18px 16px;counter-increment:p;display:flex;gap:14px}
+.pipe li::before{
+  content:counter(p,decimal-leading-zero);font:400 1.6rem/1 var(--disp);color:var(--lime);flex:none;min-width:44px;
+}
+html[data-sanity="sane"] .pipe li::before{font-family:var(--body);font-weight:800;color:var(--dim)}
+.pipe b{display:block;font:400 .92rem/1.3 var(--mono);color:var(--ink);font-weight:400}
+.pipe span{font:400 .76rem/1.6 var(--mono);color:var(--dim)}
+@media(min-width:640px){.pipe{grid-template-columns:1fr 1fr}}
+@media(min-width:1000px){.pipe{grid-template-columns:repeat(3,1fr)}}
+
+/* proof */
+.proofgrid{display:grid;grid-template-columns:1fr;gap:22px}
+@media(min-width:900px){.proofgrid{grid-template-columns:1.1fr .9fr}}
+.shots{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:640px){.shots{grid-template-columns:repeat(3,1fr);gap:10px}}
+.shots figure{margin:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
+.shots img{width:100%;height:100%;object-fit:cover}
+.shots figcaption{font:400 .62rem/1.5 var(--mono);color:var(--dim);padding:8px;border-top:1px solid var(--line)}
+.notes{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.notes div{background:var(--black);padding:16px 18px;font:400 .86rem/1.65 var(--body)}
+.notes div b{display:block;font:400 .62rem/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--lime);margin-bottom:8px;font-weight:400}
+
+/* install */
+.inst{display:grid;grid-template-columns:1fr;gap:26px}
+@media(min-width:940px){.inst{grid-template-columns:1.15fr .85fr}}
+.limits{font:400 .84rem/1.9 var(--mono);color:var(--dim)}
+.limits .hl{color:var(--lime)}
+
+/* honest */
+.gaps{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.gaps li{list-style:none;background:var(--black);padding:16px 18px;font:400 .88rem/1.6 var(--body);color:var(--ink)}
+.gaps li b{color:var(--lime);font:400 .68rem/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;display:block;margin-bottom:6px;font-weight:400}
+@media(min-width:760px){.gaps{grid-template-columns:1fr 1fr}}
+
+/* sane-only / mad-only copy */
+.sane-only{display:none}
+html[data-sanity="sane"] .sane-only{display:revert}
+html[data-sanity="sane"] .mad-only{display:none}
+
+/* footer */
+footer{margin-top:clamp(60px,9vw,120px);border-top:1px solid var(--line);padding:34px 0 60px;
+  font:400 .74rem/1.9 var(--mono);color:var(--dim)}
+footer a{color:var(--lime)}
+.fgrid{display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between}
+
+/* 3D artefact: the logo extruded from stacked layers, tilts with the pointer */
+.art{perspective:900px;display:grid;place-items:center;margin:0 0 22px;aspect-ratio:1/1;max-width:340px;margin-inline:auto;touch-action:pan-y;cursor:grab}
+.art .stage{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateX(var(--rx,-14deg)) rotateY(var(--ry,24deg));will-change:transform}
+.art svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;color:var(--c)}
+.art .shadow{position:absolute;left:12%;right:12%;bottom:-6%;height:10%;background:radial-gradient(ellipse at center,rgba(170,255,0,.28),transparent 70%);transform:translateZ(-60px) rotateX(90deg);filter:blur(6px)}
+.sessrow{display:flex;gap:16px;align-items:flex-start;margin:26px 0 0;max-width:660px}.sessrow .sess{margin:0;flex:1 1 0;min-width:0}@media(max-width:560px){.sessrow{flex-direction:column}}.sess{margin:0;border:var(--bw) solid var(--lime);border-radius:var(--radius);background:var(--panel);padding:10px}.sess img{width:100%;height:auto;aspect-ratio:760/1195;object-fit:cover;object-position:top}.sess figcaption{font:400 .66rem/1.7 var(--mono);color:var(--dim);padding:10px 4px 2px}.sess figcaption b{color:var(--lime);font-weight:400}.heroSide{margin-top:0!important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="ludilo-machina home">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="3" y="11" width="58" height="42" rx="9" fill="none" stroke="#AAFF00" stroke-width="6"/><path d="M22 24 L13 32 L22 40" fill="none" stroke="#AAFF00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M42 24 L51 32 L42 40" fill="none" stroke="#AAFF00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="32" r="6" fill="none" stroke="#AAFF00" stroke-width="5"/></svg>
+      <b>LUDILO</b><small>v0.1.0 &lt;o&gt;<br>machina</small>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#loop">loop</a><a href="#proof">proof</a><a href="#pipeline">pipeline</a><a href="#install">install</a><a href="#honest">honest</a>
+    </nav>
+    <div class="lever">
+      <label for="sanity">SANITY</label>
+      <input id="sanity" type="range" min="0" max="100" step="1" value="100"
+        aria-label="Sanity lever: slide from SANE (a normal dev-tool page) to LUDILO (the full lime identity)"
+        aria-valuetext="LUDILO">
+      <output for="sanity" id="sanityOut">100% LUDILO</output>
+    </div>
+  </div>
+  <div class="ruler" aria-hidden="true"></div>
+</header>
+
+<main id="top">
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <div class="heroL">
+    <p class="kick"><b>ludilo-machina</b> 0.1.0 &lt;o&gt; &nbsp;·&nbsp; an Android-native coding agent &nbsp;·&nbsp; <span class="mad-only">"ludilo" is Serbian for madness</span><span class="sane-only">a serious tool for serious pipelines</span></p>
+    <h1><span class="l">LUDILO</span> <br>is the machina</h1>
+    <div class="ruler" aria-hidden="true"></div>
+    <p class="deck">
+      A coding agent that lives inside Termux. It writes the app, compiles a signed APK
+      <em>on the device</em> — no Gradle, no PC — installs it, launches it, looks at the screen
+      and the logs, and fixes what broke. <span class="m">Up to 30 agent steps per message. Pure-stdlib Python, no pip dependencies.</span>
+    </p>
+    <div class="cta">
+      <a class="btn" href="#install">Get it in Termux</a>
+      <a class="btn ghost" href="https://github.com/DusanCar-sudo/ludilo-machina" rel="noopener">GitHub repo</a>
+    </div>
+    <div class="sessrow">
+    <figure class="sess">
+        <img src="img/session.jpg" alt="Start of a real ludilo session in Termux on the phone: the lime splash mark, the version line with model mimo-v2.6-flash, and a typed prompt asking to implement a spec, build it and copy the APK" width="620" height="517">
+        <figcaption><b>start of a real session</b> — the splash, the model line, and a prompt. No tool output yet; the console prints one line per call.</figcaption>
+      </figure>
+    <figure class="sess">
+        <img src="img/session2.jpg" alt="A later ludilo session in Termux on the phone: the lime splash mark, the version line with model mimo-v2.6-pro, and a typed prompt asking for Android optimization by removing unnecessary files. A KeyboardInterrupt traceback from the previous run is visible above" width="760" height="1195" loading="lazy">
+        <figcaption><b>a later session</b> — same phone, a different model (mimo-v2.6-pro) and a new prompt. The red traceback above it is an earlier run stopped with Ctrl-C.</figcaption>
+      </figure>
+    </div>
+    <p class="verified">Verified on one phone so far: Redmi Note 12 Pro, Android 13. 13 commits, all dated 2026-10-01 — this project is one day old in public.</p>
+    </div>
+
+    <div class="heroSide">
+      <div class="art" id="art" aria-hidden="true"><div class="stage" id="stage"><i class="shadow"></i></div></div>
+    </div>
+
+    <dl class="spec">
+      <div><dt>Runs in</dt><dd>Termux, on the phone<em>.</em> aarch64</dd></div>
+      <div><dt>Tools</dt><dd><em>15</em>, from <code>build_apk</code> to <code>logcat</code></dd></div>
+      <div><dt>Model</dt><dd>your endpoint, your key<em>.</em> Any OpenAI-compatible API</dd></div>
+      <div><dt>Default policy</dt><dd>everything allowed<em>.</em> You write the limits</dd></div>
+    </dl>
+  </div>
+
+  <!-- ============ LOOP ============ -->
+  <section id="loop" aria-labelledby="h-loop">
+    <div class="shead"><span class="idx">01 /</span><h2 id="h-loop">The loop, on your phone</h2></div>
+    <p class="sub">One user message, at most <code>30</code> model steps. The console prints the model's sentences and
+      <em>one line per tool call</em> — nothing else. Tool results are not printed; they go back to the model, and every
+      session is saved under <code>~/.ludilo/sessions/</code>. The block below shows the console's line format
+      (argument shapes are illustrative; the format is exact, from <code>ludilo/agent.py</code>).</p>
+<div class="term" tabindex="0" role="region" aria-label="Illustration of the ludilo console format: a prompt and one line per tool call"><span class="p">ludilo&gt;</span> <span class="t">make a flashlight app and install it</span>
+  <span class="p">&gt;</span> <span class="t">probe_env()</span>
+  <span class="p">&gt;</span> <span class="t">new_android_project(dest='…/Flashlight', package='com.ludi</span>
+  <span class="p">&gt;</span> <span class="t">write_file(path='…/MainActivity.java', content='package c</span>
+  <span class="p">&gt;</span> <span class="t">build_apk(project='…/Flashlight')</span>
+  <span class="p">&gt;</span> <span class="t">install_apk(apk_path='…/flashlight.apk')</span>
+  <span class="p">&gt;</span> <span class="t">launch_app(package='com.ludilo.flashlight')</span>
+  <span class="p">&gt;</span> <span class="t">screenshot(path='~/.ludilo/screen.png')</span>
+  <span class="p">&gt;</span> <span class="t">logcat(lines=80, package='com.ludilo.f')</span>
+<span class="c">[step limit reached]</span>  <span class="c">·</span>  <span class="c">session: 41230 tokens (28 calls)</span></div>
+
+    <ul class="loop">
+      <li><span class="n">01</span><span><span class="name">probe_env()</span><br><span class="why">device profile first — the system prompt says use it when unsure</span></span></li>
+      <li><span class="n">02</span><span><span class="name">new_android_project()</span><br><span class="why">a Java, no-Gradle project scaffold on the device</span></span></li>
+      <li><span class="n">03</span><span><span class="name">write_file()</span><br><span class="why">sources land where the compiler can see them</span></span></li>
+      <li><span class="n">04</span><span><span class="name">build_apk()</span><br><span class="why">aapt2 → javac/ecj → d8 → zipalign → apksigner, all local</span></span></li>
+      <li><span class="n">05</span><span><span class="name">install_apk() + launch_app()</span><br><span class="why">self-ADB over wireless debugging paired to localhost; launch via monkey</span></span></li>
+      <li><span class="n">06</span><span><span class="name">screenshot() · ui_dump() · logcat()</span><br><span class="why">the agent looks at what it made — then fixes what broke</span></span></li>
+    </ul>
+    <p class="cap">When the model answers without a tool call the loop stops early. When it errors, the CLI prints
+      <code>[model error: …] — your chat is kept, just say 'continue'</code>; requests retry at 0/2/5/10&nbsp;s on 429/5xx/network errors.</p>
+  </section>
+
+  <!-- ============ PROOF ============ -->
+  <section id="proof" aria-labelledby="h-proof">
+    <div class="shead"><span class="idx">02 /</span><h2 id="h-proof">Proof: Sensor Scope</h2></div>
+    <p class="sub">A live system monitor built and signed <em>on the phone</em> by ludilo-machina's own toolchain —
+      <code>aapt2</code>, <code>javac</code>, <code>d8</code>, <code>zipalign</code>, <code>apksigner</code>. No Gradle, no PC.
+      Source is in <code>examples/sensor_scope</code>. Sixty-second scrolling line graphs; tap a panel to collapse it.</p>
+    <div class="proofgrid">
+      <div class="shots">
+        <figure><img src="img/panel-cpu.jpg" alt="Sensor Scope CPU panel: per-core clock graph at 72 percent" loading="lazy"><figcaption>CPU</figcaption></figure>
+        <figure><img src="img/panel-temp.jpg" alt="Sensor Scope temperature panel with thermal zone graphs" loading="lazy"><figcaption>TEMPERATURE</figcaption></figure>
+        <figure><img src="img/panel-mem.jpg" alt="Sensor Scope per-core clock list and temperature graph" loading="lazy"><figcaption>CORES + THERMAL</figcaption></figure>
+      </div>
+      <div class="notes">
+        <div><b>Honest, on screen</b>Android blocks <code>/proc/stat</code> on this phone, so the CPU graph shows each core's clock as a percentage of its max — and the app says so in its own UI. Thermal zones like <code>ibat</code>, <code>vbat</code>, <code>soc</code> that are not temperatures are filtered out.</div>
+        <div><b>What we claim</b>The toolchain built and signed it, on the device. The repo does not claim the AI wrote the source — so neither do we. The session screenshot in the repo shows the prompt; judge the pipeline, not a story.</div>
+        <div><b>Where it stopped</b>The demo is 17 seconds, silent, 540p, filmed on the same phone. That is the whole theatre budget: it runs, or it is not on this page.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PIPELINE ============ -->
+  <section id="pipeline" aria-labelledby="h-pipe">
+    <div class="shead"><span class="idx">03 /</span><h2 id="h-pipe">The APK line</h2></div>
+    <p class="sub">Termux has no Gradle worth running and no <code>zipalign</code> package. So the pipeline is
+      assembled from what Termux does have — plus one tool ludilo carries itself.</p>
+    <ol class="pipe">
+      <li><span><b>aapt2 compile → link</b><span>resources and manifest in, base APK and <code>R.java</code> out</span></span></li>
+      <li><span><b>javac (or ecj)</b><span>Java sources compiled with <code>--release 8</code></span></span></li>
+      <li><span><b>d8</b><span>.class → <code>classes.dex</code>, added to the APK</span></span></li>
+      <li><span><b>zipalign, in pure Python</b><span>Termux ships no zipalign package, so ludilo aligns the archive itself</span></span></li>
+      <li><span><b>keytool + apksigner</b><span>a local debug.keystore, generated on first run; the APK is signed on the phone</span></span></li>
+      <li><span><b>install + launch</b><span><code>adb install -r</code> to localhost via wireless debugging, launch via monkey</span></span></li>
+    </ol>
+  </section>
+
+  <!-- ============ INSTALL ============ -->
+  <section id="install" aria-labelledby="h-inst">
+    <div class="shead"><span class="idx">04 /</span><h2 id="h-inst">Break it out of the box</h2></div>
+    <p class="sub">Termux from F-Droid or GitHub (the Play build is outdated), Android wireless debugging paired to
+      localhost, and a model endpoint you already have. Setup installs nine packages and the android-33
+      <code>android.jar</code>; it is not a one-command miracle — the docs say what still has to be true about your device.</p>
+    <div class="inst">
+<div class="term" tabindex="0" role="region" aria-label="Install and configuration commands"><span class="c"># in Termux</span>
+$ sh scripts/setup.sh
+$ python -m ludilo config
+<span class="c">Base URL:</span> https://your-endpoint/v1
+<span class="c">Model:</span> your-model
+<span class="c">API key:</span> ********
+saved to ~/.ludilo/config.json (0600)
+$ python -m ludilo "make a flashlight app and install it"</div>
+      <div class="limits">
+        <p><span class="hl">Everything is allowed by default.</span> Then you tighten it, per tool or glob:</p>
+<div class="term" style="margin-top:14px">$ ludilo limits deny device_*
+$ ludilo limits confirm install_apk
+$ ludilo limits deny_shell "rm -rf"
+$ ludilo status</div>
+        <p style="margin-top:14px"><code>deny_shell</code> is a plain substring match on shell commands — a tripwire,
+          not a sandbox, and we will not call it one. Every tool-call attempt lands append-only in
+          <code>~/.ludilo/actions.log</code>. <code>ludilo continue</code> picks the chat back up; <code>ludilo status</code>
+          shows the model, the key, the toolchain and your token totals.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HONEST ============ -->
+  <section id="honest" aria-labelledby="h-honest">
+    <div class="shead"><span class="idx">05 /</span><h2 id="h-honest">The gaps, stated</h2></div>
+    <p class="sub">A page that hides its holes is selling you something. These are open, in the repo's own words where possible.</p>
+    <ul class="gaps">
+      <li><b>One device</b>Verified on a Redmi Note 12 Pro, Android 13. "Any Android" is not a claim we can make.</li>
+      <li><b>Young repo</b>13 commits, all 2026-10-01. The README's Status section still says the APK pipeline has "not yet run on a phone" — commit c4620e2 says otherwise; git log wins.</li>
+      <li><b>Termux:API app</b>The <code>termux_api</code> tool needs the Termux:API Android app in practice; setup.sh installs the package but the repo does not document the app. That is a docs gap, not a feature.</li>
+      <li><b>No license file yet</b>The repo is public; a license is not chosen yet, so we name none.</li>
+      <li><b>The model is yours</b>Ludilo calls whatever OpenAI-compatible endpoint you configure. There is no hosted service, no account, no pricing page.</li>
+      <li><b>"Ask before destructive" is a request</b>The system prompt asks the model politely. Only a <code>confirm</code> limit actually enforces it.</li>
+    </ul>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section aria-labelledby="h-end" style="padding-bottom:0">
+    <div class="shead"><span class="idx">06 /</span><h2 id="h-end">Your phone is<br>not finished.</h2></div>
+    <div class="ruler" aria-hidden="true" style="margin:26px 0"></div>
+    <div class="cta">
+      <a class="btn" href="https://github.com/DusanCar-sudo/ludilo-machina" rel="noopener">Clone the repo</a>
+      <a class="btn ghost" href="#install">Read the setup</a>
+    </div>
+    <p class="verified mad-only">Why build apps on a phone with an AI agent? Because it is slightly mad — and now the page agrees with itself again.</p>
+    <p class="verified sane-only">Thank you for restoring sanity. The lever is right there in the header if you regret it.</p>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap fgrid">
+    <span>ludilo-machina 0.1.0 &lt;o&gt; — madness, machina. Runs in Termux. No trackers, no analytics, no third-party scripts on this page.</span>
+    <span>Aura family by ethos, not by design · public siblings at <a href="https://github.com/DusanCar-sudo" rel="noopener">github.com/DusanCar-sudo</a></span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var r=document.getElementById('sanity'),o=document.getElementById('sanityOut'),h=document.documentElement;
+  function name(v){return v<=25?'SANE':(v>=75?'LUDILO':'ODD')}
+  function apply(){
+    var v=+r.value;
+    h.setAttribute('data-sanity', v<=25?'sane':(v>=75?'ludilo':'odd'));
+    o.textContent=v+'% '+name(v);
+    r.setAttribute('aria-valuetext', v+' percent, '+name(v));
+  }
+  r.addEventListener('input',apply);apply();
+})();
+</script>
+<script>
+(function(){
+  var st=document.getElementById('stage'),art=document.getElementById('art');if(!st)return;
+  var NS='http://www.w3.org/2000/svg',N=26,GAP=1.7;
+  function gear(cx,cy,ro,ri){var d='';for(var i=0;i<6;i++){var a=i*60,pts=[[ri,a-15],[ro,a-10],[ro,a+10],[ri,a+15]];
+    pts.forEach(function(q,k){var t=q[1]*Math.PI/180;d+=(i+k?'L':'M')+(cx+q[0]*Math.cos(t)).toFixed(2)+' '+(cy+q[0]*Math.sin(t)).toFixed(2)})}
+    return d+'Z M'+(cx+3.4)+' '+cy+'a3.4 3.4 0 1 0 -6.8 0a3.4 3.4 0 1 0 6.8 0'}
+  var body='<rect x="6" y="10" width="52" height="44" rx="11" fill="none" stroke="currentColor" stroke-width="6.5"/>'
+   +'<path d="M22 22 L12 32 L22 42 M42 22 L52 32 L42 42" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>'
+   +'<path fill="currentColor" fill-rule="evenodd" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="'+gear(32,32,8.2,6.2)+'"/>';
+  for(var i=0;i<N;i++){var t=i/(N-1),sv=document.createElementNS(NS,'svg');sv.setAttribute('viewBox','0 0 64 64');
+    var l=Math.round(24+t*26);sv.style.setProperty('--c','hsl(75 100% '+(t<1?l:50)+'%)');
+    sv.style.transform='translateZ('+((i-(N-1)/2)*GAP).toFixed(2)+'px)';sv.innerHTML=body;st.appendChild(sv)}
+  var moved=false,rx=-14,ry=24,tx=rx,ty=ry,drag=false,px=0,py=0,reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function set(){st.style.setProperty('--rx',rx+'deg');st.style.setProperty('--ry',ry+'deg')}
+  art.addEventListener('pointerdown',function(e){drag=true;moved=true;px=e.clientX;py=e.clientY;art.setPointerCapture(e.pointerId);art.style.cursor='grabbing'});
+  art.addEventListener('pointermove',function(e){if(!drag)return;ty+=(e.clientX-px)*.6;tx=Math.max(-70,Math.min(70,tx-(e.clientY-py)*.6));px=e.clientX;py=e.clientY});
+  art.addEventListener('pointerup',function(){drag=false;art.style.cursor='grab'});
+  if(reduce){set();return}
+  var base=24,t0=0;(function f(ts){t0=ts||0;if(!drag&&!moved)ty=base+Math.sin(t0/1800)*38;rx+=(tx-rx)*.12;ry+=(ty-ry)*.12;set();requestAnimationFrame(f)})();
+})();
+</script>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 # ludilo-machina
 
+**Website:** https://dusancar-sudo.github.io/ludilo-machina/
+
 A coding agent that runs **inside Termux on Android**. It writes Android apps, packs them into signed
 APKs **on the phone**, installs them, launches them, looks at the screen/logs, and fixes what broke.
 
