@@ -11,6 +11,12 @@ APKs **on the phone**, installs them, launches them, looks at the screen/logs, a
 - Done and tested on a desktop: agent loop, tool dispatch, user limits (allow-all default), splash from the logo, action log, project template.
 - Written but **not yet run on a phone**: APK pipeline (`ludilo/apk.py`), device tools (adb/Termux:API), `scripts/setup.sh`.
 
+## Example: Sensor Scope
+A real app built on the phone: live CPU / temperature / memory / battery / network / storage graphs.
+Source in [`examples/sensor_scope`](examples/sensor_scope).
+
+<p align="center"><img src="assets/sensor-scope/monitor-1.jpg" width="230"> <img src="assets/sensor-scope/monitor-2.jpg" width="230"> <img src="assets/sensor-scope/monitor-3.jpg" width="230"></p>
+
 ## Run (in Termux)
     sh scripts/setup.sh
     python -m ludilo config      # base URL / model / key (any OpenAI-compatible API)
