@@ -1,7 +1,11 @@
+<p align="center"><img src="assets/ludilo.png" alt="Ludilo Machina" width="220"></p>
+
 # ludilo-machina
 
 A coding agent that runs **inside Termux on Android**. It writes Android apps, packs them into signed
 APKs **on the phone**, installs them, launches them, looks at the screen/logs, and fixes what broke.
+
+<p align="center"><img src="assets/termux-splash.jpg" alt="ludilo running in Termux on a Redmi Note 12 Pro" width="300"></p>
 
 ## Status (v0.1, honest)
 - Done and tested on a desktop: agent loop, tool dispatch, user limits (allow-all default), splash from the logo, action log, project template.
