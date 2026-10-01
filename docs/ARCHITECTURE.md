@@ -14,7 +14,6 @@ Vision: first coding agent built for Android. It writes the app AND operates the
 plan -> generate project -> build APK -> `pm install` -> `am start` -> `screencap` + `uiautomator dump` -> compare to intent -> `logcat` errors -> patch -> repeat.
 
 ## Safety model
-- Capability tiers 0-5 above; user grants each explicitly, stored in config.
 - Read-only by default; confirm before: SMS/calls, installs of other apps, settings changes, deleting files.
 - Action log (append-only) of every device action.
 - Kill switch: Termux notification action + volume-key combo.

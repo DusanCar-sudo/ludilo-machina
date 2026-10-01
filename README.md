@@ -4,7 +4,7 @@ A coding agent that runs **inside Termux on Android**. It writes Android apps, p
 APKs **on the phone**, installs them, launches them, looks at the screen/logs, and fixes what broke.
 
 ## Status (v0.1, honest)
-- Done and tested on a desktop: agent loop, tool dispatch, confirmation gate, action log, project template.
+- Done and tested on a desktop: agent loop, tool dispatch, user limits (allow-all default), splash from the logo, action log, project template.
 - Written but **not yet run on a phone**: APK pipeline (`ludilo/apk.py`), device tools (adb/Termux:API), `scripts/setup.sh`.
 
 ## Run (in Termux)
@@ -15,6 +15,14 @@ APKs **on the phone**, installs them, launches them, looks at the screen/logs, a
 ## Tools the agent has
 files/shell, `probe_env`, `new_android_project`, `build_apk`, `install_apk`, `launch_app`,
 `screenshot`, `ui_dump`, `logcat`, `device_input`, `device_settings`, `termux_api`.
-Risky ones ask for confirmation; every action is logged to `~/.ludilo/actions.log`.
+**Everything is allowed by default.** Users add their own limits:
+
+    ludilo limits                          # show
+    ludilo limits deny device_settings     # block a tool (globs ok: device_*)
+    ludilo limits confirm install_apk      # ask before each use
+    ludilo limits deny_shell "rm -rf"      # block shell commands containing this
+    ludilo limits allow device_settings    # remove a limit
+
+Every action is logged to `~/.ludilo/actions.log`.
 
 See docs/ARCHITECTURE.md and docs/APK-ON-DEVICE.md.

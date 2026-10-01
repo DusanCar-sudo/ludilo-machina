@@ -1,9 +1,8 @@
-"""Tools the agent can call. Device tools are tiered; tier >= CONFIRM asks the user first."""
+"""Tools the agent can call. Allowed by default; user limits (ludilo/limits.py) can deny or confirm."""
 import json, os, shlex, subprocess, time
-from . import apk, env
+from . import apk, env, limits
 
 LOG = os.path.expanduser("~/.ludilo/actions.log")
-CONFIRM = {"install_apk", "device_input", "device_settings", "termux_api", "run_shell"}
 _confirm = lambda desc: input(f"\n[ludilo] allow: {desc}? [y/N] ").strip().lower() == "y"
 
 
@@ -123,7 +122,10 @@ def call(name, args, confirm=None):
     fn = globals().get(name)
     if not fn or name not in {s["name"] for s in SCHEMAS}:
         return f"unknown tool {name}"
-    if name in CONFIRM and not confirm(f"{name} {json.dumps(args)}"):
+    verdict = limits.check(name, args)
+    if verdict.startswith("deny:"):
+        out = "BLOCKED: " + verdict[5:]
+    elif verdict == "confirm" and not confirm(f"{name} {json.dumps(args)}"):
         out = "DENIED by user"
     else:
         try:

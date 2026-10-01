@@ -1,5 +1,6 @@
 import sys
-from . import agent, llm, env, __version__
+import json
+from . import agent, llm, env, limits, splash
 
 
 def setup_llm():
@@ -18,10 +19,16 @@ def main():
         return env.main() if hasattr(env, "main") else print(__import__("json").dumps(env.probe(), indent=1))
     if a[:1] == ["config"]:
         return setup_llm()
+    if a[:1] == ["limits"]:
+        if len(a) == 1:
+            return print(json.dumps(limits.get(), indent=1))
+        if a[1] not in ("deny", "confirm", "allow", "deny_shell") or len(a) < 3:
+            return print("usage: ludilo limits [deny|confirm|allow|deny_shell] <tool or pattern>")
+        return print(json.dumps(limits.edit(a[1], " ".join(a[2:])), indent=1))
     if not llm.load_config()["model"]:
         print("No model configured. Run: ludilo config")
         return 1
-    print(f"ludilo-machina {__version__} - Android coding agent. Ctrl-D to exit.")
+    splash.show(model=llm.load_config()["model"])
     hist = None
     first = " ".join(a)
     while True:
