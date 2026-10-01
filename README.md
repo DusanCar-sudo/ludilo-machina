@@ -13,7 +13,7 @@ APKs **on the phone**, installs them, launches them, looks at the screen/logs, a
 
 ## Example: Sensor Scope
 A real app built on the phone: live CPU / temperature / memory / battery / network / storage graphs.
-Source in [`examples/sensor_scope`](examples/sensor_scope).
+Source in [`examples/sensor_scope`](examples/sensor_scope). [Watch it run (17 s)](assets/sensor-scope/demo.mp4).
 
 <p align="center"><img src="assets/sensor-scope/monitor-1.jpg" width="230"> <img src="assets/sensor-scope/monitor-2.jpg" width="230"> <img src="assets/sensor-scope/monitor-3.jpg" width="230"></p>
 
